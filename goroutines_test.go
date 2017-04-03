@@ -1,6 +1,7 @@
 package goroutines
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -259,5 +260,134 @@ func TestWaitGroup(t *testing.T) {
 	if sum != 3 {
 		t.Error(sum)
 		t.Fail()
+	}
+}
+
+func TestWithContext(t *testing.T) {
+	result := make(chan int, 10000)
+	ctx := context.Background()
+
+	err := New().
+		WaitStart().
+		WaitGo(time.Millisecond*110).
+		WithContext(ctx, func(c context.Context) {
+			for {
+				select {
+				case <-c.Done():
+					return
+				case <-time.After(time.Millisecond * 10):
+					result <- 1
+				}
+			}
+		})
+
+	if err != ErrTimeout {
+		t.Error(err)
+		t.Fail()
+	}
+	close(result)
+	sum := 0
+	for v := range result {
+		sum += v
+	}
+	if sum != 10 {
+		t.Error(sum)
+		t.Fail()
+	}
+}
+
+func TestWithContext2(t *testing.T) {
+	result := make(chan int, 1000)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := New().
+		WaitStart().
+		WithContext(ctx, func(c context.Context) {
+			for {
+				select {
+				case <-c.Done():
+					result <- 1
+					close(result)
+					return
+				case <-time.After(time.Millisecond * 10):
+					result <- 1
+				}
+			}
+		})
+
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+
+	<-time.After(time.Millisecond * 100)
+
+	cancel()
+	sum := 0
+	for v := range result {
+		sum += v
+	}
+	if sum != 10 {
+		t.Error(sum)
+		t.Fail()
+	}
+}
+
+func TestWithContext3(t *testing.T) {
+	result := make(chan int, 1000)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := New().
+		WaitStart().
+		After(func() { result <- 1 }, true).
+		Before(func() { result <- 1 }).
+		Recover(func(interface{}) {
+			result <- 1
+			close(result)
+		}).
+		WithContext(ctx, func(c context.Context) {
+			defer func() {
+				panic(1)
+			}()
+			for {
+				select {
+				case <-c.Done():
+					return
+				case <-time.After(time.Millisecond * 10):
+					result <- 1
+				}
+			}
+		})
+
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+
+	<-time.After(time.Millisecond * 100)
+
+	cancel()
+	sum := 0
+	for v := range result {
+		sum += v
+	}
+	if sum != 12 {
+		t.Error(sum)
+		t.Fail()
+	}
+}
+
+func BenchmarkDefault(b *testing.B) {
+	f := func() {}
+	for n := 0; n < b.N; n++ {
+		go f()
+	}
+}
+
+func BenchmarkGo(b *testing.B) {
+	f := func() {}
+	for n := 0; n < b.N; n++ {
+		New().
+			Go(f)
 	}
 }

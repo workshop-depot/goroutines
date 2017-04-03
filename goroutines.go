@@ -2,6 +2,7 @@
 package goroutines
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -91,6 +92,84 @@ func (x Go) Go(f func()) error {
 	return nil
 }
 
+// WithContext is same as Go(...) but also accepts a context and if a timeout
+// larger than zero is set, creates a child context and cencels it on timeout
+func (x Go) WithContext(ctx context.Context, f func(context.Context)) error {
+	_ctx := ctx
+	var _cancel context.CancelFunc
+	var started, funcDone chan struct{}
+	if x.waitStart {
+		started = make(chan struct{})
+	}
+	if x.timeout != 0 {
+		if x.timeout > 0 {
+			_ctx, _cancel = context.WithCancel(ctx)
+			defer _cancel()
+		}
+		funcDone = make(chan struct{})
+	}
+	if x.wg != nil {
+		x.wg.Add(1)
+	}
+
+	go func() {
+		if started != nil {
+			close(started)
+		}
+		if x.wg != nil {
+			defer x.wg.Done()
+		}
+		if funcDone != nil {
+			defer close(funcDone)
+		}
+		if x.recoverFunc != nil {
+			defer func() {
+				if e := recover(); e != nil {
+					x.recoverFunc(e)
+				}
+			}()
+		}
+		if x.before != nil {
+			x.before()
+		}
+		if x.after != nil && x.deferAfter {
+			defer x.after()
+		}
+
+		f(_ctx)
+
+		if x.after != nil && !x.deferAfter {
+			x.after()
+		}
+	}()
+
+	if started != nil {
+		<-started
+	}
+	if funcDone != nil {
+		if x.timeout > 0 {
+			tm := time.NewTimer(x.timeout)
+			defer func() {
+				if !tm.Stop() {
+					select {
+					case <-tm.C:
+					default:
+					}
+				}
+			}()
+			select {
+			case <-funcDone:
+			case <-tm.C:
+				return ErrTimeout
+			}
+		} else if x.timeout < 0 {
+			<-funcDone
+		}
+	}
+
+	return nil
+}
+
 // WaitStart instructs Go to start a goroutine and wait for it to start,
 // and after goroutine started, it returns.
 func (x Go) WaitStart() Go {
@@ -134,9 +213,9 @@ func (x Go) After(after func(), deferred ...bool) Go {
 	return x
 }
 
-// Constants
-const (
-	ErrTimeout = _error(`TIMEOUT`)
+var (
+	// ErrTimeout is a timeout error
+	ErrTimeout error = _error(`TIMEOUT`)
 )
 
 type _error string
