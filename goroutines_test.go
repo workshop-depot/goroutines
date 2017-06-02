@@ -6,54 +6,44 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGo(t *testing.T) {
-	result := ``
+	result := ""
 
 	New().
 		Go(func() {
-			result = `OK`
+			result = "OK"
 		})
 
-	if result != `` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Equal(t, "", result)
 }
 
 func TestWaitStart(t *testing.T) {
-	result := ``
+	result := ""
 
 	New().
 		WaitStart().
 		Go(func() {
-			result = `OK`
+			result = "OK"
 		})
 
-	if result != `OK` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Equal(t, "OK", result)
 }
 
 func TestWaitGo1(t *testing.T) {
-	result := ``
+	result := ""
 
 	err := New().
 		WaitGo(time.Second).
 		Go(func() {
-			result = `OK`
+			result = "OK"
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `OK` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "OK", result)
 }
 
 func TestWaitGo2(t *testing.T) {
@@ -63,10 +53,7 @@ func TestWaitGo2(t *testing.T) {
 			time.Sleep(time.Second)
 		})
 
-	if err != ErrTimeout {
-		t.Error(err)
-		t.Fail()
-	}
+	assert.Equal(t, ErrTimeout, err)
 }
 
 func TestWaitGo3(t *testing.T) {
@@ -79,13 +66,8 @@ func TestWaitGo3(t *testing.T) {
 			time.Sleep(time.Millisecond * 50)
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if <-result != 1 {
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, 1, <-result)
 }
 
 func TestRecover(t *testing.T) {
@@ -100,14 +82,8 @@ func TestRecover(t *testing.T) {
 			panic(`1`)
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if <-errStr != `1` {
-		t.Error(errStr)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "1", <-errStr)
 }
 
 func TestAfter1(t *testing.T) {
@@ -122,14 +98,8 @@ func TestAfter1(t *testing.T) {
 			result += `2`
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `123` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "123", result)
 }
 
 func TestAfter2(t *testing.T) {
@@ -148,14 +118,8 @@ func TestAfter2(t *testing.T) {
 			panic(`ERR`)
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `123` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "123", result)
 }
 
 func TestAfter3(t *testing.T) {
@@ -172,14 +136,8 @@ func TestAfter3(t *testing.T) {
 			panic(`ERR`)
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `12` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "12", result)
 }
 
 func TestBefore1(t *testing.T) {
@@ -194,14 +152,8 @@ func TestBefore1(t *testing.T) {
 			result += `2`
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `012` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "012", result)
 }
 
 func TestBefore2(t *testing.T) {
@@ -218,14 +170,8 @@ func TestBefore2(t *testing.T) {
 			panic(`XYZ`)
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if result != `012` {
-		t.Error(result)
-		t.Fail()
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, "012", result)
 }
 
 func TestWaitGroup(t *testing.T) {
@@ -243,24 +189,15 @@ func TestWaitGroup(t *testing.T) {
 			result <- 2
 		})
 
-	if err1 != nil {
-		t.Error(err1)
-		t.Fail()
-	}
-	if err2 != nil {
-		t.Error(err2)
-		t.Fail()
-	}
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
 	wg.Wait()
 	close(result)
 	sum := 0
 	for v := range result {
 		sum += v
 	}
-	if sum != 3 {
-		t.Error(sum)
-		t.Fail()
-	}
+	assert.Equal(t, 3, sum)
 }
 
 func TestWithContext(t *testing.T) {
@@ -281,19 +218,13 @@ func TestWithContext(t *testing.T) {
 			}
 		})
 
-	if err != ErrTimeout {
-		t.Error(err)
-		t.Fail()
-	}
+	assert.Equal(t, ErrTimeout, err)
 	close(result)
 	sum := 0
 	for v := range result {
 		sum += v
 	}
-	if sum != 10 {
-		t.Error(sum)
-		t.Fail()
-	}
+	assert.Equal(t, 10, sum)
 }
 
 func TestWithContext2(t *testing.T) {
@@ -315,10 +246,7 @@ func TestWithContext2(t *testing.T) {
 			}
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
+	assert.Nil(t, err)
 
 	<-time.After(time.Millisecond * 100)
 
@@ -327,10 +255,7 @@ func TestWithContext2(t *testing.T) {
 	for v := range result {
 		sum += v
 	}
-	if sum != 10 {
-		t.Error(sum)
-		t.Fail()
-	}
+	assert.Equal(t, 10, sum)
 }
 
 func TestWithContext3(t *testing.T) {
@@ -359,10 +284,7 @@ func TestWithContext3(t *testing.T) {
 			}
 		})
 
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
+	assert.Nil(t, err)
 
 	<-time.After(time.Millisecond * 100)
 
@@ -371,10 +293,43 @@ func TestWithContext3(t *testing.T) {
 	for v := range result {
 		sum += v
 	}
-	if sum != 12 {
-		t.Error(sum)
-		t.Fail()
+	assert.Equal(t, 12, sum)
+}
+
+var (
+	wg = &sync.WaitGroup{}
+)
+
+func simpleSupervisor(intensity int, fn func()) {
+	if intensity <= 0 {
+		return
 	}
+	intensity--
+	New().
+		WaitGroup(wg).
+		Recover(func(e interface{}) {
+			time.Sleep(time.Millisecond * 10)
+			go simpleSupervisor(intensity, fn)
+		}).
+		Go(fn)
+}
+
+func TestSimpleSupervisor(t *testing.T) {
+	cnt := new(int)
+	*cnt = 0
+	go simpleSupervisor(3, func() {
+		*cnt = *cnt + 1
+		panic(`1`)
+	})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Millisecond * 50)
+	}()
+
+	wg.Wait()
+	assert.Equal(t, 3, *cnt)
 }
 
 func BenchmarkDefault(b *testing.B) {
