@@ -25,7 +25,7 @@ func TestWaitStart(t *testing.T) {
 	result := ""
 
 	New().
-		WaitStart().
+		EnsureStarted().
 		Go(func() {
 			result = "OK"
 		})
@@ -37,7 +37,7 @@ func TestWaitGo1(t *testing.T) {
 	result := ""
 
 	err := New().
-		WaitGo(time.Second).
+		Timeout(time.Second).
 		Go(func() {
 			result = "OK"
 		})
@@ -48,7 +48,7 @@ func TestWaitGo1(t *testing.T) {
 
 func TestWaitGo2(t *testing.T) {
 	err := New().
-		WaitGo(time.Millisecond * 100).
+		Timeout(time.Millisecond * 100).
 		Go(func() {
 			time.Sleep(time.Second)
 		})
@@ -60,7 +60,7 @@ func TestWaitGo3(t *testing.T) {
 	result := make(chan int, 10)
 
 	err := New().
-		WaitGo(-1).
+		Timeout(-1).
 		Go(func() {
 			result <- 1
 			time.Sleep(time.Millisecond * 50)
@@ -74,7 +74,7 @@ func TestRecover(t *testing.T) {
 	errStr := make(chan string, 10)
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		Recover(func(e interface{}) {
 			errStr <- fmt.Sprintf("%v", e)
 		}).
@@ -90,7 +90,7 @@ func TestAfter1(t *testing.T) {
 	result := `1`
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		After(func() {
 			result += `3`
 		}).
@@ -106,7 +106,7 @@ func TestAfter2(t *testing.T) {
 	result := `1`
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		Recover(func(e interface{}) {
 			// error (panic) handling ...
 		}).
@@ -126,7 +126,7 @@ func TestAfter3(t *testing.T) {
 	result := `1`
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		Recover(func(e interface{}) {}).
 		After(func() {
 			result += `3`
@@ -144,7 +144,7 @@ func TestBefore1(t *testing.T) {
 	result := `1`
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		Before(func() {
 			result = `0` + result
 		}).
@@ -161,7 +161,7 @@ func TestBefore2(t *testing.T) {
 
 	err := New().
 		Recover(func(e interface{}) {}).
-		WaitStart().
+		EnsureStarted().
 		Before(func() {
 			result = `0` + result
 		}).
@@ -174,17 +174,17 @@ func TestBefore2(t *testing.T) {
 	assert.Equal(t, "012", result)
 }
 
-func TestWaitGroup(t *testing.T) {
+func TestAddToGroup(t *testing.T) {
 	result := make(chan int, 10)
 	wg := &sync.WaitGroup{}
 
 	err1 := New().
-		WaitGroup(wg).
+		AddToGroup(wg).
 		Go(func() {
 			result <- 1
 		})
 	err2 := New().
-		WaitGroup(wg).
+		AddToGroup(wg).
 		Go(func() {
 			result <- 2
 		})
@@ -205,8 +205,8 @@ func TestWithContext(t *testing.T) {
 	ctx := context.Background()
 
 	err := New().
-		WaitStart().
-		WaitGo(time.Millisecond*110).
+		EnsureStarted().
+		Timeout(time.Millisecond*110).
 		WithContext(ctx, func(c context.Context) {
 			for {
 				select {
@@ -232,7 +232,7 @@ func TestWithContext2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		WithContext(ctx, func(c context.Context) {
 			for {
 				select {
@@ -263,7 +263,7 @@ func TestWithContext3(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := New().
-		WaitStart().
+		EnsureStarted().
 		After(func() { result <- 1 }, true).
 		Before(func() { result <- 1 }).
 		Recover(func(interface{}) {
@@ -306,7 +306,7 @@ func simpleSupervisor(intensity int, fn func()) {
 	}
 	intensity--
 	New().
-		WaitGroup(wg).
+		AddToGroup(wg).
 		Recover(func(e interface{}) {
 			time.Sleep(time.Millisecond * 10)
 			go simpleSupervisor(intensity, fn)

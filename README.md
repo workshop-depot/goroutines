@@ -5,7 +5,7 @@ For example, here we wait for the goroutine to start, also perform some action a
 
 ```go
 err := New().
-	WaitStart().
+	EnsureStarted().
 	Recover(func(e interface{}) {
 		// error (panic) handling ...
 	}).

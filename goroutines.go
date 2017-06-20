@@ -12,19 +12,19 @@ func New() Go { return Go{} }
 
 // Go provides a fluent way to prepare & start a goroutine
 type Go struct {
-	waitStart   bool
-	timeout     time.Duration
-	recoverFunc func(interface{})
-	before      func()
-	after       func()
-	deferAfter  bool
-	wg          *sync.WaitGroup
+	ensureStarted bool
+	timeout       time.Duration
+	recoverFunc   func(interface{})
+	before        func()
+	after         func()
+	deferAfter    bool
+	wg            *sync.WaitGroup
 }
 
 // Go is final call in the fluent chain
 func (x Go) Go(f func()) error {
 	var started, funcDone chan struct{}
-	if x.waitStart {
+	if x.ensureStarted {
 		started = make(chan struct{})
 	}
 	if x.timeout != 0 {
@@ -98,7 +98,7 @@ func (x Go) WithContext(ctx context.Context, f func(context.Context)) error {
 	_ctx := ctx
 	var _cancel context.CancelFunc
 	var started, funcDone chan struct{}
-	if x.waitStart {
+	if x.ensureStarted {
 		started = make(chan struct{})
 	}
 	if x.timeout != 0 {
@@ -170,23 +170,23 @@ func (x Go) WithContext(ctx context.Context, f func(context.Context)) error {
 	return nil
 }
 
-// WaitStart instructs Go to start a goroutine and wait for it to start,
+// EnsureStarted instructs Go to start a goroutine and wait for it to start,
 // and after goroutine started, it returns.
-func (x Go) WaitStart() Go {
-	x.waitStart = true
+func (x Go) EnsureStarted() Go {
+	x.ensureStarted = true
 	return x
 }
 
-// WaitGo waits for f to complete (in a goroutine)
+// Timeout sets a timeout and waits for f to complete (in a goroutine)
 // or times out (returning ErrTimeout). A negative value for timeout, means
 // waiting infinitely.
-func (x Go) WaitGo(timeout time.Duration) Go {
+func (x Go) Timeout(timeout time.Duration) Go {
 	x.timeout = timeout
 	return x
 }
 
-// WaitGroup registers the goroutine in a sync.WaitGroup by adding necessary code (Add/Done)
-func (x Go) WaitGroup(wg *sync.WaitGroup) Go {
+// AddToGroup registers the goroutine in a sync.WaitGroup by adding necessary code (Add/Done)
+func (x Go) AddToGroup(wg *sync.WaitGroup) Go {
 	x.wg = wg
 	return x
 }
